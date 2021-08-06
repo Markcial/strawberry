@@ -173,3 +173,29 @@ def test_can_use_on_simple_fields():
 
     result = schema.execute_sync(query)
     assert result.errors[0].message == "Cannot see email for this user"
+
+
+def test_can_use_async_permissions():
+    class ASyncPermissions(BasePermission):
+        message = "Cannot see email for this user"
+
+        async def has_permission(self, source: typing.Any, info: Info, **kwargs) -> bool:
+            return False
+
+    @strawberry.type
+    class User:
+        name: str
+        email: str = strawberry.field(permission_classes=[ASyncPermissions])
+
+    @strawberry.type
+    class Query:
+        @strawberry.field
+        def user(self, name: str) -> User:
+            return User(name=name, email="patrick.arminio@gmail.com")
+
+    schema = strawberry.Schema(query=Query)
+
+    query = '{ user(name: "patrick") { email } }'
+
+    result = schema.execute_sync(query)
+    assert result.errors[0].message == "Cannot see email for this user"

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from enum import Enum
 from inspect import isasyncgen, iscoroutine
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Tuple, Type, Union
@@ -332,7 +333,12 @@ class GraphQLCoreConverter:
             for permission_class in field.permission_classes:
                 permission = permission_class()
 
-                if not permission.has_permission(source, info, **kwargs):
+                result = permission.has_permission(source, info, **kwargs)
+
+                if iscoroutine(result):
+                    result = asyncio.get_event_loop().run_until_complete(result)
+
+                if not result:
                     message = getattr(permission, "message", None)
                     raise PermissionError(message)
 
